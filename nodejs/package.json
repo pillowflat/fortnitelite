@@ -1,0 +1,16 @@
+{
+  "name": "fortnite",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^6.0.0",
+    "request": "^2.87.0",
+    "request-promise": "^4.2.2"
+  }
+}
