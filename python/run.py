@@ -4,6 +4,7 @@ import subprocess
 from dotenv import load_dotenv
 import requests
 import pprint as pp
+from device import Device
 
 load_dotenv()
 
@@ -11,18 +12,14 @@ API_KEY = os.getenv('API_KEY')
 PLATFORM = os.getenv('PLATFORM')
 NICKNAME = os.getenv('NICKNAME')
 URL = "https://api.fortnitetracker.com/v1/profile/{}/{}".format(PLATFORM, NICKNAME)
-interval = os.getenv('PING_INTERVAL_SEC')
-PING_INTERVAL_SEC = int(interval) if interval.isnumeric() else 5
+interval = os.getenv('POLL_INTERVAL_SEC')
+POLL_INTERVAL_SEC = int(interval) if interval.isnumeric() else 5
+DEVICE_NAME = os.getenv('DEVICE_NAME')
 
 kills_count = 0
 
-def switch_on():
-    print('Switching on...')
-    subprocess.run('wemo switch Outlet on'.split(' '))
-
-def switch_off():
-    print('Switching off...')    
-    subprocess.run('wemo switch Outlet off'.split(' '))
+device = None
+polls = 0
 
 def get_value(key, items):
     for item in items:
@@ -44,27 +41,47 @@ def get_status():
     except Exception as err:
         print('Error: {}'.format(err))
 
-def execute():
+def poll():
     global kills_count
+    global polls
+    polls += 1
+    status = get_status()
+    new_kills = int(status['kills'])
+    print('old kills: {}, new kills: {}'.format(kills_count, new_kills))
+    
+    # #debug
+    # if (polls % 4 == 0):
+    #     new_kills += 1
+
+    if (new_kills != kills_count):
+        kills_count = new_kills
+        device.on()
+    else:
+        device.off()
+
+def start_polling():
+    threading.Timer(POLL_INTERVAL_SEC, start_polling).start()
+    poll()
+
+def init():
+    print('POLL_INTERVAL_SEC: {}'.format(POLL_INTERVAL_SEC))    
+    print('DEVICE_NAME: {}'.format(DEVICE_NAME))
+    print('NICKNAME: {}'.format(NICKNAME))
+
+    print('Testing switch on/off...')
+    global device
+    device = Device(DEVICE_NAME)
+    device.on()
+    device.off()
+
+    print('Setting initial state...')
     status = get_status()
     pp.pprint(status)
-    if (status['kills'] != kills_count):
-        kills_count = status['kills']
-        switch_on()
-    else:
-        switch_off()
-
-def start():
-    threading.Timer(PING_INTERVAL_SEC, start).start()
-    execute()
+    global kills_count
+    kills_count = int(status['kills'])
+    
+    print('Starting polling...')
+    start_polling()
 
 if __name__ == "__main__":
-    print('PING_INTERVAL_SEC: {}'.format(PING_INTERVAL_SEC))    
-    print('Testing switch on/off...')
-    switch_on()
-    switch_off()
-    status = get_status()
-    pp.pprint(status)
-    kills_count = status['kills']
-    start()
-
+    init()
